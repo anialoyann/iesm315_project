@@ -1,0 +1,375 @@
+---
+title: |
+  | Exploring AUA's Student Performance
+subtitle: |
+  | IESM315 Design Analysis and Experiment - Final Project
+  | Instructor: Tadamasa Sawada
+author: 
+  - Anna Movsisyan
+  - Ani Aloyan
+  - Elina Ohanjanyan
+  - Lusine Aghinyan
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+    keep_tex: true
+fontsize: 12pt
+header-includes:
+  - "\\usepackage{titlesec}"
+  - "\\usepackage{setspace}"
+  - "\\newcommand{\\sectionbreak}{\\clearpage}"
+  - "\\usepackage{fontspec}"
+  - "\\setmainfont{DejaVu Serif}"
+---
+
+<style>
+body {
+  line-height: 2; /* Double spacing */
+}
+</style>
+
+\doublespacing
+```{python, include=FALSE}
+#!pip install requests
+#!pip install beautifulsoup4
+```
+
+```{python, include=FALSE, echo = FALSE} 
+import json
+from bs4 import BeautifulSoup
+import requests
+import re
+import pandas as pd
+import multiprocessing
+```
+
+```{r, include=FALSE, echo = FALSE} 
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(ggforce)
+library(stringr)
+library(fmsb)
+library(sf)
+library(ggpubr)
+library(wordcloud2)
+library(dplyr)
+library(tidyr)
+library(wordcloud)
+library(ggwordcloud)
+#install.packages("readxl")  # Install the package
+library(readxl)  
+```
+
+
+```{r}
+gpa_data <- read_excel("DS_student_request.xlsx")
+gpa_data
+
+```
+
+```{r}
+colnames(gpa_data)
+```
+```{r}
+library(dplyr)
+
+# Remove rows where All_CGPA is NA or NaN
+gpa_data <- gpa_data %>%
+  filter(!is.na(All_CGPA))
+
+```
+
+```{r}
+data_gpa_gender <- gpa_data %>% filter(!is.na(All_CGPA)) %>% 
+  group_by(Gender)  %>%
+  summarise(average_cgpa = mean(All_CGPA, na.rm = TRUE))
+```
+
+```{r}
+data_gpa_gender
+```
+
+
+```{r}
+college_counts <- gpa_data %>%
+  filter(!is.na(College)) %>%  # Remove rows with NA in College
+  group_by(College) %>%
+  summarise(student_count = n())  # Count the number of students
+
+# Create the pie chart
+ggplot(college_counts, aes(x = "", y = student_count, fill = College)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y", start = 0) +  # Convert bar chart to pie chart
+  geom_text(aes(label = student_count), position = position_stack(vjust = 0.5), size = 5) +  # Add annotations
+  theme_void() +  # Remove axes and background
+  labs(title = "Number of Students in Each College", fill = "College") +
+  scale_fill_manual(values = c(
+    "#FFB6C1", "#87CEEB", "#FFD700", "#98FB98", "#FF69B4", "#FFA07A"
+  ))  
+```
+
+```{r}
+ggplot(data = data_gpa_gender, aes(x = Gender, y = average_cgpa, fill = Gender)) + geom_bar(stat = "identity") + theme_minimal()+
+  labs(title = "Average GPA by Gender", y = "", x = "") 
+```
+
+
+
+```{r}
+ggplot(data = gpa_data, aes(x = All_CGPA, fill = Gender)) +
+  geom_density(alpha = 0.6) +
+  theme_minimal() +
+  labs(title = "Density of CGPA by Gender", x = "CGPA", y = "Density") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold")) +
+  scale_fill_manual(values = c("#FFD700", "#FF69B4"))  # Cute gradient colors
+
+```
+
+
+
+```{r}
+ggplot(data = gpa_data, aes(x = School_GPA, y = All_CGPA)) +
+  geom_point(aes(color = FirstEnrolled_Year), size = 3, alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Relationship Between School GPA and All CGPA", x = "School GPA", y = "All CGPA") +
+  scale_color_viridis_c(option = "plasma")  # Color by enrollment year for a vibrant look
+
+```
+
+
+
+
+```{r}
+ggplot(data = gpa_data, aes(x = All_CGPA)) +
+  geom_histogram(binwidth = 0.2, fill = "#87CEEB", color = "white", alpha = 0.8) +
+  theme_minimal() +
+  labs(title = "Distribution of CGPA", x = "CGPA", y = "") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+
+```
+
+
+
+```{r}
+gpa_trend <- gpa_data %>%
+  group_by(FirstEnrolled_Year) %>%
+  summarise(average_cgpa = mean(All_CGPA, na.rm = TRUE))
+
+ggplot(data = gpa_trend, aes(x = FirstEnrolled_Year, y = average_cgpa)) +
+  geom_line(color = "#87CEEB", size = 1.2) +
+
+    theme_minimal() +
+  labs(title = "Average CGPA Over Enrollment Years", x = "Enrollment Year", y = "Average CGPA") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+
+```
+
+```{r}
+data_gpa_gender <- gpa_data %>%
+  filter(!is.na(All_CGPA)) %>%
+  group_by(Gender) %>%
+  summarise(
+    average_cgpa = mean(All_CGPA, na.rm = TRUE),
+    student_count = n()  # Count the number of students
+  )
+
+# Plot with labels showing the number of students
+ggplot(data = data_gpa_gender, aes(x = Gender, y = average_cgpa, fill = Gender, group = Gender)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = student_count), vjust = 10, size = 5) +  # Add student count labels
+  theme_minimal() +
+  labs(title = "Average GPA by Gender", y = "Average CGPA", x = "") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))+
+    scale_fill_manual(values = c(
+    "#FFB6C1", "#87CEEB", "#FFD700", "#98FB98", "#FF69B4", "#FFA07A"
+  ))  
+
+```
+
+
+```{r}
+
+library(ggplot2)
+
+gender_counts <- gpa_data %>%
+  group_by(Gender) %>%
+  summarise(count = n())
+
+ggplot(gender_counts, aes(x = "", y = count, fill = Gender)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  theme_void() +
+  scale_fill_manual(values = c("#FFB6C1", "#87CEEB"))+
+  geom_text(aes(label = count), vjust = -5, size = 5, hjust = 0.5) +
+  labs(title = "Proportion of Students by Gender") 
+
+
+```
+
+
+
+```{r}
+ggplot(data = gpa_data, aes(x = as.factor(FincialAid_Received_AtLeast_Once), y = FirstYear_CGPA, fill = as.factor(FincialAid_Received_AtLeast_Once))) +
+  geom_boxplot(alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "1st Year Cumulative GPA by Financial Aid Status", x = "Financial Aid", y = "1st Year CGPA") +
+  scale_fill_manual(values = c("#E57373", "#81C784")) +  # Softer red and green
+  scale_x_discrete(labels = c("No", "Yes")) +  # Rename 0 and 1 to No and Yes
+  theme(legend.position = "none")
+
+```
+
+
+```{r}
+roa_avg_cgpa <- gpa_data %>%
+  filter(!is.na(RoA)) %>%  # Remove rows where RoA is NA
+  group_by(RoA) %>%
+  summarise(
+    average_cgpa = mean(All_CGPA, na.rm = TRUE),
+    count = n()  # Calculate the number of students
+  )
+
+ggplot(data = roa_avg_cgpa, aes(x = factor(RoA), y = average_cgpa, fill = factor(RoA))) +
+  geom_bar(stat = "identity") +
+  #geom_text(aes(label = count), vjust = 12, size = 5) +  # Add count labels
+  theme_minimal() +
+  labs(title = "Average CGPA by Republic of Armenia (RoA)", x = "RoA", y = "Average CGPA") +
+  scale_fill_manual(values = c(
+    "#87CEEB", # Sky Blue
+    "#FFA07A"  # Light Salmon
+  )) +
+  theme(legend.position = "none")
+
+```
+
+
+```{r}
+ggplot(data = gpa_data, aes(x = College, y = School_GPA, fill = College)) +
+  geom_boxplot(outlier.color = "black", alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Distribution of School GPA by College", x = "College", y = "School GPA") +
+  scale_fill_brewer(palette = "Set3")
+
+```
+
+```{r}
+ggplot(data = gpa_data, aes(x = College, y = All_CGPA, fill = College)) +
+  geom_boxplot(outlier.color = "black", alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Distribution of All Cumulative GPA by College", x = "College", y = "All Cumulative GPA") +
+  scale_fill_brewer(palette = "Set3")
+
+```
+
+
+```{r}
+ggplot(data = gpa_data, aes(x = College, y = FirstYear_CGPA, fill = College)) +
+  geom_boxplot(outlier.color = "black", alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Distribution of 1st Year Cumulative GPA by College", x = "College", y = "1st Year Cumulative GPA") +
+  scale_fill_brewer(palette = "Set3") + ylim(0,4)
+
+```
+
+
+
+
+```{r}
+ggplot(data = gpa_data, aes(x = FirstYear_CGPA, y = All_CGPA)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", color = "darkred", se = FALSE) +
+  theme_minimal() +
+  labs(title = "Correlation Between First-Year CGPA and All CGPA", x = "First-Year CGPA", y = "All CGPA")
+
+```
+
+
+
+```{r}
+ggplot(data = gpa_data, aes(x = FirstYear_CGPA, y = School_GPA)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", color = "darkred", se = FALSE) +
+  theme_minimal() +
+  labs(title = "Correlation Between First-Year CGPA and SChool GPA", x = "First-Year CGPA", y = "School CGPA")
+
+
+```
+
+
+
+```{r}
+major_trends <- gpa_data %>%
+  group_by(FirstEnrolled_Year, FirstEnrolled_MajorCode) %>%
+  summarise(average_cgpa = mean(All_CGPA, na.rm = TRUE))
+
+ggplot(data = major_trends, aes(x = FirstEnrolled_Year, y = average_cgpa, color = FirstEnrolled_MajorCode, group = FirstEnrolled_MajorCode)) +
+  scale_color_manual(values = c(
+    "#F7DC6F", "#AF7AC5", "#48C9B0"
+  )) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  theme_minimal() +
+  labs(title = "Average CGPA Trends by Major", x = "Enrollment Year", y = "Average CGPA", color = "Major")
+```
+
+
+
+```{r}
+ggplot(data = major_avg_cgpa, aes(x = reorder(FirstEnrolled_MajorCode, average_cgpa), y = average_cgpa, fill = FirstEnrolled_MajorCode)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  theme_minimal() +
+  coord_flip() +
+  labs(title = "Average CGPA by Major", x = "Major", y = "Average CGPA") +
+  scale_fill_manual(values = c(
+     "#F7DC6F", "#AF7AC5", 
+    "#48C9B0"
+  ))  # Replace these with your preferred colors
+
+```
+
+
+```{r}
+# Calculate the average first-year CGPA for each major
+major_avg_firstyear_gpa <- gpa_data %>%
+  group_by(FirstEnrolled_MajorCode) %>%
+  summarise(average_firstyear_gpa = mean(FirstYear_CGPA, na.rm = TRUE))
+
+# Create the bar plot for first-year CGPA
+ggplot(data = major_avg_firstyear_gpa, aes(x = reorder(FirstEnrolled_MajorCode, average_firstyear_gpa), y = average_firstyear_gpa, fill = FirstEnrolled_MajorCode)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  theme_minimal() +
+  coord_flip() +
+  labs(title = "Average First-Year CGPA by Major", x = "Major", y = "Average First-Year CGPA") +
+  scale_fill_manual(values = c(
+    "#F7DC6F", "#AF7AC5", "#48C9B0"
+  ))  # Replace with your preferred colors
+
+
+```
+
+
+```{r}
+library(dplyr)
+
+# Filter and clean the data
+gpa_data_clean <- gpa_data %>%
+  filter(!is.na(FirstYear_CGPA), !is.na(All_CGPA), !is.na(College))  # Remove missing values
+
+# Fit a linear model with interaction between First-Year GPA and College
+model <- aov(All_CGPA ~ FirstYear_CGPA * College, data = gpa_data_clean)
+
+# Summary of the ANOVA
+summary(model)
+
+
+```
+
+
+
+
+
+
