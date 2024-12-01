@@ -79,7 +79,7 @@ library(dplyr)
 
 # Remove rows where All_CGPA is NA or NaN
 gpa_data <- gpa_data %>%
-  filter(!is.na(All_CGPA))
+  filter(!is.na(All_CGPA)) %>% filter(!is.na(FirstYear_CGPA))
 
 ```
 
@@ -164,7 +164,7 @@ ggplot(data = gpa_trend, aes(x = FirstEnrolled_Year, y = average_cgpa)) +
 
     theme_minimal() +
   labs(title = "Average CGPA Over Enrollment Years", x = "Enrollment Year", y = "Average CGPA") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))+ ylim(0,4)
 
 ```
 
@@ -183,12 +183,36 @@ ggplot(data = data_gpa_gender, aes(x = Gender, y = average_cgpa, fill = Gender, 
   geom_text(aes(label = student_count), vjust = 10, size = 5) +  # Add student count labels
   theme_minimal() +
   labs(title = "Average GPA by Gender", y = "Average CGPA", x = "") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))+
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))+
     scale_fill_manual(values = c(
     "#FFB6C1", "#87CEEB", "#FFD700", "#98FB98", "#FF69B4", "#FFA07A"
   ))  
 
 ```
+
+```{r}
+data_gpa_gender_firstyear <- gpa_data %>%
+  filter(!is.na(FirstYear_CGPA)) %>%
+  group_by(Gender) %>%
+  summarise(
+    average_cgpa = mean(FirstYear_CGPA, na.rm = TRUE),  # Use FirstYear_CGPA
+    student_count = n()  # Count the number of students
+  )
+
+# Plot with labels showing the number of students
+ggplot(data = data_gpa_gender_firstyear, aes(x = Gender, y = average_cgpa, fill = Gender, group = Gender)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = student_count), vjust = 10, size = 5) +  # Add student count labels
+  theme_minimal() +
+  labs(title = "Average First-Year GPA by Gender", y = "Average First-Year CGPA", x = "") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold")) +
+  scale_fill_manual(values = c(
+    "#FFB6C1", "#87CEEB", "#FFD700", "#98FB98", "#FF69B4", "#FFA07A"
+  ))
+
+
+```
+
 
 
 ```{r}
@@ -368,8 +392,298 @@ summary(model)
 
 ```
 
+1) Anova all star - First Year*School_GPA*Gender*FinAid
+2) Anova multivay sax gpa-nerovv - hsihenq school gpa-y berel enq 0-4 boundi 
+3) Anova individual, lm (Gender, )
+4) t-test between genders, finaid
+5) multiway anova between colleges/genders
+6) multiway anova between years of enrollment 
+7) major * gpa_1st_year * college -> cumulative 
+
+
+```{r}
+# Clean the data
+gpa_data_clean <- gpa_data %>%
+  filter(!is.na(FirstYear_CGPA), !is.na(School_GPA), !is.na(Gender), !is.na(FincialAid_Received_AtLeast_Once))
+
+# Fit the ANOVA model
+anova_all_star <- aov(All_CGPA ~ FirstYear_CGPA * School_GPA * Gender * FincialAid_Received_AtLeast_Once, data = gpa_data_clean)
+
+# Summary of the ANOVA
+summary(anova_all_star)
+
+
+```
+
+```{r}
+# Fit the model
+anova_gender <- aov(All_CGPA ~ Gender, data = gpa_data)
+
+# Summary of the ANOVA
+summary(anova_gender)
+
+
+```
 
 
 
+
+```{r}
+# T-test between genders
+t_test_gender <- t.test(All_CGPA ~ Gender, data = gpa_data)
+print(t_test_gender)
+```
+
+```{r}
+# T-test for Financial Aid (0 = No, 1 = Yes)
+t_test_finaid <- t.test(All_CGPA ~ FincialAid_Received_AtLeast_Once, data = gpa_data)
+print(t_test_finaid)
+```
+
+```{r}
+gpa_data_clean <- gpa_data %>%
+  filter(!is.na(FirstYear_CGPA), !is.na(College), !is.na(FirstEnrolled_MajorCode))
+
+anova_major_gpa_college <- aov(All_CGPA ~ FirstEnrolled_MajorCode * FirstYear_CGPA * College, data = gpa_data_clean)
+
+summary(anova_major_gpa_college)
+
+```
+
+```{r}
+library(ggplot2)
+ggplot(gpa_data_clean, aes(x = FirstYear_CGPA, y = All_CGPA, color = Gender)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Interaction Between First-Year GPA and Gender",
+       x = "First-Year GPA",
+       y = "Cumulative GPA") +
+  theme_minimal()
+
+```
+
+
+
+```{r}
+# Correlation between 1st Year GPA and School GPA
+cor_test <- cor.test(gpa_data$FirstYear_CGPA, gpa_data$School_GPA, method = "pearson")
+print(cor_test)
+
+```
+
+
+```{r}
+# Correlation between 1st Year GPA and Overall GPA
+cor_test_uni_gpa <- cor.test(gpa_data$FirstYear_CGPA, gpa_data$All_CGPA, method = "pearson")
+print(cor_test_uni_gpa)
+```
+
+
+```{r}
+#Understanding impact of College with ANOVA
+oneway_anova <- aov(All_CGPA ~ College, data = gpa_data)
+summary(oneway_anova)
+```
+```{r}
+#Let's do Tuckey test to find the College that stands out
+tukey_test <- TukeyHSD(oneway_anova)
+print(tukey_test)
+```
+
+
+
+```{r}
+gpa_data <- gpa_data %>%
+  mutate(FirstEnrolled_Year = as.factor(FirstEnrolled_Year))
+
+#One-Way ANOVA based on Enrollment Year 
+#Note that if we want to have a finished Cumulative GPA , we have to ends the Enrollment Year to 2016
+anova_year <- aov(All_CGPA ~ FirstEnrolled_Year, data = gpa_data)
+summary(anova_year)
+```
+
+```{r}
+# Tuckey! No we look at which years exactly stand out 
+tukey_posthoc <- TukeyHSD(anova_year)
+print(tukey_posthoc)
+```
+
+
+```{r}
+#Multi-Way ANOVA (Interaction with Gender)
+#We saw from the plots how there was a difference between Genders 
+#So why not take it too?
+anova_year_gender <- aov(All_CGPA ~ FirstEnrolled_Year * Gender, data = gpa_data)
+summary(anova_year_gender)
+
+```
+
+
+```{r}
+# Create a new dataframe to avoid modifying the original
+gpa_data_copy <- gpa_data
+
+# Define authentic mappings for each college
+authentic_mapping <- data.frame(
+  College = c("CSE", "CBE", "CHSS"),
+  Authentic_Major = c("CS", "BAB", "EC")
+)
+
+# Merge the mapping into the new dataframe
+gpa_data_copy <- gpa_data_copy %>%
+  left_join(authentic_mapping, by = "College")
+
+# Verify that the mapping was added correctly
+head(gpa_data_copy)
+
+# Recalculate Switch-Ups
+gpa_data_copy <- gpa_data_copy %>%
+  mutate(
+    Switch_Up = ifelse(FirstEnrolled_MajorCode == Authentic_Major, "Authentic", "Switched")
+  )
+
+# Count switch-ups and authentic enrollments per college
+switch_summary <- gpa_data_copy %>%
+  group_by(College, Switch_Up) %>%
+  summarise(Count = n()) %>%
+  ungroup()
+
+# Display the summary
+print(switch_summary)
+
+# Visualize the results
+library(ggplot2)
+
+ggplot(switch_summary, aes(x = College, y = Count, fill = Switch_Up)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(
+    title = "Switch-Ups vs Authentic Enrollees by College",
+    x = "College",
+    y = "Number of Students",
+    fill = "Enrollment Type"
+  )
+
+```
+
+
+
+
+
+```{r}
+# Filter mismatches for CSE
+switched_cse <- gpa_data %>%
+  filter(College == "CSE" & FirstEnrolled_MajorCode != "BSCS")  # CSE authentic major: BSCS
+
+# Filter mismatches for CBE
+switched_cbe <- gpa_data %>%
+  filter(College == "CBE" & FirstEnrolled_MajorCode != "BAB")  # CBE authentic major: BAB
+
+# Filter mismatches for CHSS
+switched_chss <- gpa_data %>%
+  filter(College == "CHSS" & FirstEnrolled_MajorCode != "BAEC")  # CHSS authentic major: EC
+
+```
+
+
+```{r}
+print(switched_cse)
+print(switched_cbe)
+print(switched_chss)
+
+```
+
+
+```{r}
+# Filter for CSE (authentic major: BSCS)
+cse_data <- gpa_data %>%
+  mutate(Switched = ifelse(College == "CSE" & FirstEnrolled_MajorCode != "BSCS", 1, 0)) %>%
+  filter(College == "CSE")
+
+# Filter for CBE (authentic major: BAB)
+cbe_data <- gpa_data %>%
+  mutate(Switched = ifelse(College == "CBE" & FirstEnrolled_MajorCode != "BAB", 1, 0)) %>%
+  filter(College == "CBE")
+
+# Filter for CHSS (authentic major: EC)
+chss_data <- gpa_data %>%
+  mutate(Switched = ifelse(College == "CHSS" & FirstEnrolled_MajorCode != "BAEC", 1, 0)) %>%
+  filter(College == "CHSS")
+
+```
+
+
+
+```{r}
+library(ggplot2)
+
+
+combined_data <- bind_rows(cse_data, cbe_data, chss_data)
+
+# Check the combined data
+print(head(combined_data))
+
+# Summarize the counts of switched and authentic enrollments by college
+summary_counts <- combined_data %>%
+  group_by(College, Switched) %>%
+  summarise(Count = n(), .groups = "drop")
+
+# Print the summary
+print(summary_counts)
+
+# Plot proportions
+ggplot(summary_counts, aes(x = College, y = Count, fill = as.factor(Switched))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(
+    title = "Proportion of Switched vs Authentic Students by College",
+    x = "College",
+    y = "Number of Students",
+    fill = "Switched (0 = Authentic, 1 = Switched)"
+  )
+
+```
+
+
+```{r}
+# T-test for CSE
+t_test_cse <- t.test(All_CGPA ~ Switched, data = combined_data %>% filter(College == "CSE"))
+print(t_test_cse)
+```
+
+```{r}
+# T-test for CBE
+t_test_cbe <- t.test(All_CGPA ~ Switched, data = combined_data %>% filter(College == "CBE"))
+print(t_test_cbe)
+```
+
+```{r}
+# T-test for CHSS
+t_test_chss <- t.test(All_CGPA ~ Switched, data = combined_data %>% filter(College == "CHSS"))
+print(t_test_chss)
+
+```
+
+
+```{r}
+print(combined_data %>% filter(College == "CHSS"))
+```
+
+
+```{r}
+anova_all_star_switched <- aov(All_CGPA ~ FirstYear_CGPA * Gender * College * FirstEnrolled_MajorCode * FincialAid_Received_AtLeast_Once, data = combined_data)
+
+# Summary of the ANOVA with Switched
+summary(anova_all_star_switched)
+
+```
+
+
+```{r}
+anova_all_star_switched <- aov(All_CGPA ~ FirstYear_CGPA * Switched * College, data = combined_data)
+
+# Summary of the ANOVA with Switched
+summary(anova_all_star_switched)
+```
 
 
