@@ -33,6 +33,13 @@ body {
 </style>
 
 \doublespacing
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(fig.width = 8,fig.height = 4)
+knitr::opts_chunk$set(echo = TRUE)
+```
 
 ```{r, include=FALSE, echo = FALSE} 
 library(dplyr)
@@ -45,21 +52,20 @@ library(tidyr)
 library(readxl)  
 library(gridExtra)
 library(car)
+library(patchwork)
+
 ```
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-
+\newpage
 # Abstract
 
 This report aims to analyze the American University of Armenia (AUA) student GPA statistics provided by AUA’s Office of Institutional Research and Assessment (OIRA). The study identifies patterns in academic performance across metrics such as colleges, majors, genders, financial aid satus, etc. This analysis highlights trends and potential factors that affect the final cumulative GPA of students.
 
 
-## Data Collection
+# Data Collection
 
 The data for this study was obtained from AUA's OIRA. Key variables included:
+
 - **Student ID**: Numeric code assigned to students.
 - **FirstEnrolled_MajorCode**: Initial major of enrollment.
 - **College**: College associated with each major.
@@ -74,27 +80,30 @@ The data for this study was obtained from AUA's OIRA. Key variables included:
 Data privacy concerns led to the exclusion of rows with a count of five or fewer to ensure student anonymity.
 
 
-## A Glance at the Data
+# A Glance at the Data
 
 ```{r,echo=FALSE}
 gpa_data <- read_excel("DS_student_request.xlsx")
 gpa_data
 ```
+\newpage
+
 
 ```{r,echo=FALSE}
 gpa_data <- gpa_data %>%
   filter(!is.na(All_CGPA)) %>% filter(!is.na(FirstYear_CGPA))
 ```
-
-
-```{r, echo=FALSE}
-library(gridExtra)
+```{r, echo = FALSE}
 
 college_counts <- gpa_data %>%
   filter(!is.na(College)) %>%
   group_by(College) %>%
   summarise(student_count = n())
+```
 
+
+
+```{r, echo = FALSE, fig.cap = "Distribution of AUA Students by College and Gender", out.width="80%"}
 college_plot <- ggplot(college_counts, aes(x = "", y = student_count, fill = College)) +
   geom_bar(stat = "identity", width = 1, color = "white") +
   coord_polar("y", start = 0) +
@@ -103,14 +112,11 @@ college_plot <- ggplot(college_counts, aes(x = "", y = student_count, fill = Col
   labs(title = "Number of Students in Each College", fill = "College") +
   scale_fill_manual(values = c("#FFB6C1", "#87CEEB", "#FFD700")) +   
   theme(
-    plot.title = element_text(hjust = 0.5, size = 10, face = "bold")
+    plot.title = element_text(hjust = 0.5, size = 8, face = "bold")
   ) 
-
-# Create the pie chart for genders
 gender_counts <- gpa_data %>%
   group_by(Gender) %>%
   summarise(count = n())
-
 gender_plot <- ggplot(gender_counts, aes(x = "", y = count, fill = Gender)) +
   geom_bar(stat = "identity", width = 1) +
   coord_polar("y", start = 0) +
@@ -118,41 +124,76 @@ gender_plot <- ggplot(gender_counts, aes(x = "", y = count, fill = Gender)) +
   scale_fill_manual(values = c("#FFB6C1", "#87CEEB")) +
   geom_text(aes(label = count), position = position_stack(vjust = 0.5), size = 5) +
   labs(title = "Proportion of Students by Gender")+   theme(
-    plot.title = element_text(hjust = 0.5, size = 10, face = "bold")
+    plot.title = element_text(hjust = 0.5, size = 8, face = "bold")
   ) 
 
 # Arrange the plots side by side
-grid.arrange(college_plot, gender_plot, ncol = 2)
+combined_plot <- college_plot + gender_plot
+ggsave("combined_plot.png", combined_plot, width = 6, height = 3)
 
+# Display the image
+knitr::include_graphics("combined_plot.png")
 ```
+
 The piecharts show the distribution of students by 1) College and 2) Gender.
 
-As it can be seen from \@ref(fig1), the College of CSE has the most number of enrolled students, CHSS and CSE are relatively closer to each other in numbers and more than twice as less than CBE. Looking at the distribution by gender, it is seen that the number of girls exceeds the number of boys by 200. 
+As it can be seen from Fig. 1, the College of CSE has the most number of enrolled students, CHSS and CSE are relatively closer to each other in numbers and more than twice as less than CBE. Looking at the distribution by gender, it is seen that the number of female students exceeds the number of male students by ~200. 
 
-```{r, echo=FALSE}
-ggplot(data = gpa_data, aes(x = All_CGPA)) +
+```{r, echo=FALSE, fig.cap = "Histogram of CGPA", out.width="80%"}
+dist = ggplot(data = gpa_data, aes(x = All_CGPA)) +
   geom_histogram(binwidth = 0.2, fill = "#87CEEB", color = "white", alpha = 0.8) +
   theme_minimal() +
   labs(title = "Distribution of CGPA", x = "CGPA", y = "") +
   theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
 
+ggsave("histogram.png", dist, width = 6, height = 3)
+
+# Display the image
+knitr::include_graphics("histogram.png")
 ```
-Now a glance at the distribution of All Cumulative GPA from \@ref(fig2). From the plot it can be seen that the distribution is skewed and has a concentration around 3.3-3.7.
 
-## Literature Review
+Now a glance at the distribution of All Cumulative GPA from Fig. 2. From the plot, it can be seen that the distribution is skewed and has a concentration around 3.3-3.7.
 
-### Case 1 
+# Literature Review
 
-### Case 2 - Collegeboard Analysis 
+To better understand the effects of some of our factors on students' performances, we conducted a Literature Review and studued some articles that tested some similr factors.
 
+## Factors Influencing College Persistence for First-Time Students
 
-### Key Findings
+The first article chosen to study the influce of the factors present in our dataset was  article"Factors Influencing College Persistence for First-Time Students" by Sheilynda Stewart, Doo Hun Lim, and JoHyun Kim. It  examines various factors that impact whether students persist in their college education (which, admittedly, is different from studying the influence of these factors on the students' GPA). Some of the key points we want to highlight are:
 
-### Limitations
+ - \textbf{Need-Based Grants:} The authors highlight the positive role of financial aid, particularly need-based grants (which is similar to the Financial Aid granted to the students by AUA), in supporting college persistence. These grants reduce financial stress and help students from lower socioeconomic backgrounds stay enrolled, demonstrating their significant influence on retention rates.
 
-## Exploratory Data Analysis (EDA)
+ - \textbf{Gender:} Findings on gender differences in persistence are mixed. Some studies cited in the article reveal that women persist and graduate at higher rates compared to men, while others show no significant gender differences in dropout behavior. The resulrs of the study itself did not indicate that gender is significant when it comes to college persistence. This indicates that gender may interact with other factors, such as major or institutional characteristics, to influence outcomes.
 
-```{r,echo=FALSE}
+ - \textbf{School GPA:} According to this study, academic performance, as reflected in a student’s High School and First Year College GPA, is a strong predictor of persistence. Students with higher GPAs are more likely to stay enrolled and complete their degrees. A strong academic foundation during the first year appears critical in sustaining momentum toward graduation. However, it is import to take into consideration the fact that the high school GPAs of the students used in this study were self-reported, so the findings may have some inaccuracies.
+
+## Collegeboard Analysis 
+
+The second source chosen for understanding our factor is the was an analysis conducted by Collegeboard (the organization responsible for conducting the SAT tests) called "Using SAT Scores to Inform Academic Major-Related Decisions and Planning on Campus" by Paul A. Westrick, Jessica P. Marini, and Emily J. Shaw. While the overall goal of the study was not the analysis of college performance, it did include some interesting findings that may be useful to us in the future.
+
+The most interesting finding for our study was the following plot:
+```{r, echo = FALSE, fig.cap = 'Relationship Between High School and College GPA by Major',  out.width="95%"}
+knitr::include_graphics("collegeboard.png")
+```
+As can be seen in Fig. 3, the reason why we wanted to focus on this study is because it shows some interesting trends about how the major of the students can correlate with their High School and College GPA.
+Some of the interesting points that can be derived from this plot are:
+ - \textbf{Science Majors:} One of the more interesting things on this plot is the fact that while Science majors (Math, Engineering, etc) have the highest GPAs in their school years, their College GPAs seem to be somewhat lower than that of the other majors in college.
+ - \textbf{Business Majors:} Another interesting statistic is that Business majors are around the middle in both high school and college GPA.
+ - \textbf{Communications Majors:} The last finding that can be somewhat related to our data is the fact Communications majors (which can correspond to the students in AUA's English and Communications program), despite having a relatively lower High School GPA, have one of the highest GPAs in College.
+
+However, it is important to note that the study was conducted on the data of US students and might not reflect some trends present in the Armenian education system.
+
+## Ethnic and gender stereotypes on college students’ academic performance
+
+The last article we will discuss is Ethnic and gender stereotypes on college students’ academic performance" by Ya-Wen (Melissa) Liang, Don Jones and Rebecca A. Robles-Pina.
+The reason why this article can be somewhat relevant is because it was conducted at a small university in Texas. While this does not directly correlate to Armenia, it is still important to note that Texas, being one of the more conservative states in the U.S., can show somewhat similar soicietal factors to Armenia, a very conservative country.
+
+The main finding of this study was that gender had a significant effect on the students'GPA, and female students had a higher GPA than males.
+
+# Exploratory Data Analysis (EDA)
+
+```{r,echo=FALSE, fig.cap = "Average CGPA by Cohort", out.width="90%"}
 # Calculate average CGPA, standard deviation, and standard error for each enrollment year
 gpa_trend <- gpa_data %>%
   group_by(FirstEnrolled_Year) %>%
@@ -177,9 +218,9 @@ ggplot(data = gpa_trend, aes(x = FirstEnrolled_Year, y = average_cgpa)) +
 
 ```
 
-Figure 3 shows the average CGPA (with error bar by standard error) over the enrollment years. As it can be observed, there is almost no difference between the cohorts of different years and their average is slightly higher tha 3.0.
+Fig. 4 shows the average CGPA (with error bar by standard error) over the enrollment years. As it can be observed, there is almost no difference between the cohorts of different years and their average is slightly higher tha 3.0.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, out.width="90%", fig.cap = 'GPA Distribution by Gender'}
 # Data for All_CGPA
 data_gpa_gender_all <- gpa_data %>%
   filter(!is.na(All_CGPA)) %>%
@@ -224,9 +265,9 @@ plot_first <- ggplot(data = data_gpa_gender_first, aes(x = Gender, y = average_c
 grid.arrange(plot_all, plot_first, ncol = 2)
 
 ```
-The figure \@ref(fig4) compares the average CGPA of students by gender, displayed separately for two categories: All_CGPA and FirstYear_CGPA. Female students demonstrate higher average GPAs in both categories, with an average of 3.29 for All_CGPA and 3.15 for FirstYear_CGPA. In contrast, male students achieve averages of 2.81 for All_CGPA and 2.68 for FirstYear_CGPA. 
+Fig. 5 compares the average CGPA of students by gender, displayed separately for two categories: All_CGPA and FirstYear_CGPA. Female students demonstrate higher average GPAs in both categories, with an average of 3.29 for All_CGPA and 3.15 for FirstYear_CGPA. In contrast, male students achieve averages of 2.81 for All_CGPA and 2.68 for FirstYear_CGPA. 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, out.width="80%", fig.cap = 'GPA Distribution by Financial Aid Status'}
 # Plot for All_CGPA
 plot_all_cgpa <- ggplot(data = gpa_data, aes(x = as.factor(FincialAid_Received_AtLeast_Once), y = All_CGPA, fill = as.factor(FincialAid_Received_AtLeast_Once))) +
   geom_boxplot(alpha = 0.7) +
@@ -257,7 +298,9 @@ grid.arrange(plot_all_cgpa, plot_first_year, ncol = 2)
 ```
 This figure displays the distribution of 1st Year/All Cumulative GPAs based on whether students received financial aid. The boxplots of both categories indicates that the median GPA is slightly higher for students who received financial aid (green) compared to those who did not (red). The interquartile range (IQR) is similar for both groups, but there are more outliers in the group without financial aid, particularly on the lower end of the GPA scale. This suggests that financial aid may provide a stabilizing effect on academic performance, reducing extreme variations and potentially supporting better outcomes.
 
-```{r, echo=FALSE}
+\newpage
+
+```{r, echo=FALSE, out.width="90%", fig.cap = 'First Year GPA Distribution by RoA Citizenship'}
 gpa_data_filtered <- gpa_data %>%
   filter(!is.na(FirstYear_CGPA), !is.na(RoA))
 
@@ -268,7 +311,7 @@ ggplot(data = gpa_data_filtered, aes(x = as.factor(RoA), y = All_CGPA, fill = as
   labs(
     title = "1st Year CGPA by Citizenship Status (Republic of Armenia)", 
     x = "Citizenship Status", 
-    y = "All CGPA"
+    y = "1st Year CGPA"
   ) +
   scale_fill_manual(values = c("#87CEEB", "#FFA07A")) +  # Custom colors
   scale_x_discrete(labels = c("No", "Yes")) +  # Rename 0 and 1 to No and Yes
@@ -285,8 +328,9 @@ This figure shows boxplots comparing the All CGPA distribution of students categ
 
 However, this comparison is inadmissible due to the stark imbalance in sample sizes: only 26 non-Armenian citizens are included, compared to 1,273 Armenian citizens. Such a significant disparity makes the comparison unreliable. It would be more appropriate to exclude non-Armenian citizens from future analyses to avoid skewed interpretations.
 
+\newpage
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, out.width="90%", fig.cap = 'School GPA Distribution by College and Major'}
 # Plot for School_GPA by College
 boxplot_college <- ggplot(data = gpa_data, aes(x = College, y = School_GPA, fill = College)) +
   geom_boxplot(alpha = 0.7) +
@@ -321,7 +365,9 @@ This figure displays the distribution of School_GPA across colleges (left) and m
 
 The boxplots illustrate that the distributions are consistent across colleges and their corresponding majors, with comparable medians and interquartile ranges. This indicates limited variability within colleges but highlights the focus of the dataset on a specific time frame and program set. The analysis ensures that comparisons remain valid within the historical context of program availability.
 
-```{r, echo=FALSE}
+\newpage
+
+```{r, echo=FALSE, out.width="90%", fig.cap = 'First Year GPA Distribution by College and Major'}
 # Plot for School_GPA by College
 boxplot_college <- ggplot(data = gpa_data, aes(x = College, y = FirstYear_CGPA, fill = College)) +
   geom_boxplot(alpha = 0.7) +
@@ -354,7 +400,9 @@ A similar figure compares the distribution of 1st Year CGPA across colleges (lef
 
 The distributions across colleges and majors show similar patterns, with median GPAs being close across all categories. Notably, the College of Humanities and Social Sciences (CHSS) and its corresponding program (`BAEC`) demonstrate slightly higher median GPAs compared to other colleges and majors. Outliers are present in all categories, particularly in `CSE` and `BSCS`, indicating a broader variation in student performance for these groups. This comparison highlights the relative consistency in GPA performance across colleges and majors while acknowledging differences in variability.
 
-```{r, echo=FALSE}
+\newpage 
+
+```{r, echo=FALSE, out.width="90%", fig.cap = 'CGPA Distribution by College and Major'}
 # Plot for School_GPA by College
 boxplot_college <- ggplot(data = gpa_data, aes(x = College, y = All_CGPA, fill = College)) +
   geom_boxplot(alpha = 0.7) +
@@ -388,8 +436,9 @@ This final figure presents the distribution of `All CGPA` for students across co
 
 It is important to note that 1st Year CGPA contributes directly to the calculation of All CGPA, making this similarity in distribution an expected behavior. Outliers are present in all categories, reflecting variations in student performance. This consistency reinforces the role of early academic performance in shaping cumulative outcomes over the course of a student's studies.
 
+\newpage 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, out.width="90%", fig.cap = 'GPA by Enrollment Year and Major'}
 # Boxplot grouped by FirstEnrolled_Year and colored by FirstEnrolled_MajorCode
 boxplot_years <- ggplot(data = gpa_data, aes(x = as.factor(FirstEnrolled_Year), y = All_CGPA, fill = FirstEnrolled_MajorCode)) +
   geom_boxplot(alpha = 0.7) +
@@ -435,7 +484,9 @@ The boxplots highlight that BAEC majors generally have higher median GPAs, while
 
 The takeaway is the difference in distributions by Colleges and Enrollment Year. The latter, however, is relatively niche.
 
-```{r, echo = FALSE}
+\newpage 
+
+```{r, echo = FALSE, out.width="90%", fig.cap = 'Correlations of GPAs'}
 fy_all <- ggplot(data = gpa_data, aes(x = FirstYear_CGPA, y = All_CGPA)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm", color = "darkred", se = FALSE) +
@@ -466,24 +517,28 @@ The figure displays the correlations between different GPA metrics. The left pan
 
 Visually, trends are evident, but further numerical analysis is needed to determine whether the weaker correlation (e.g., between 1st Year CGPA and School GPA) justifies including both factors in the final analysis. This step ensures that correlated factors are appropriately managed.
 
+\newpage
+
 # Conducting Analysis 
 
-```{r}
+```{r, out.width="95%"}
 # Correlation between 1st Year GPA and School GPA
-cor_test <- cor.test(gpa_data$FirstYear_CGPA, gpa_data$School_GPA, method = "pearson")
+cor_test <- cor.test(gpa_data$FirstYear_CGPA, gpa_data$School_GPA, 
+                     method = "pearson")
 print(cor_test)
 ```
 
-```{r}
+```{r, out.width="95%" }
 # Correlation between 1st Year GPA and Overall GPA
-cor_test_uni_gpa <- cor.test(gpa_data$FirstYear_CGPA, gpa_data$All_CGPA, method = "pearson")
+cor_test_uni_gpa <- cor.test(gpa_data$FirstYear_CGPA, gpa_data$All_CGPA, 
+                            method = "pearson")
 print(cor_test_uni_gpa)
 ```
 The results reveal a strong positive correlation (0.884) between 1st Year GPA and Overall GPA, which is expected as the former contributes directly to the calculation of the latter. On the other hand, the correlation between 1st Year GPA and School GPA is weaker (0.368) but still statistically significant.
 
 We previously discussed the visual relationship between 1st Year GPA and School GPA in the scatterplots, where a weak correlation was observed. Although the correlation coefficient is below 0.5, indicating a modest association, we decided to retain both metrics in the analysis. This decision was made because the correlation is not strong enough to raise serious concerns about collinearity, but the potential unique contributions of both factors justify their inclusion for a comprehensive analysis.
 
-```{r}
+```{r, out.width="95%", tidy = TRUE,}
 # Understanding the impact of College on All CGPA with ANOVA
 oneway_anova <- aov(All_CGPA ~ College, data = gpa_data)
 summary(oneway_anova)
@@ -493,7 +548,7 @@ The ANOVA test confirms that College significantly impacts All CGPA, as evidence
 
 This analysis further reinforces the role of College as a meaningful factor influencing academic performance. Having established its importance, we will later proceed to examine the effect of College in more detail to deepen our understanding of its influence on student outcomes.
 
-```{r}
+```{r, out.width="95%", tidy = TRUE,}
 # Conduct Tukey's test for College
 tukey_test <- TukeyHSD(oneway_anova)
 print(tukey_test)
@@ -503,9 +558,10 @@ The Tukey test reveals clear differences in performance between colleges. While 
 
 This finding aligns with earlier observations of CSE having lower median GPAs and greater variability. It highlights the challenges faced by students in the Computer Science department, where performance consistently lags behind the other colleges. This analysis reinforces the need for targeted support or further investigation into the factors contributing to this disparity.
 
-```{r}
+```{r, out.width="95%", tidy = TRUE,}
 # T-test for Financial Aid impact on All CGPA
-t_test_finaid <- t.test(All_CGPA ~ FincialAid_Received_AtLeast_Once, data = gpa_data)
+t_test_finaid <- t.test(All_CGPA ~ FincialAid_Received_AtLeast_Once, 
+                        data = gpa_data)
 print(t_test_finaid)
 
 ```
@@ -514,7 +570,7 @@ The t-test results indicate a highly significant difference in cumulative GPA (A
 
 The negative confidence interval and t-value further confirm that the GPA for students without financial aid is consistently lower. This finding highlights the potential positive impact of financial aid on student performance, making it a crucial factor in academic success. This result aligns with previous observations from visualizations and reinforces the importance of considering financial aid status in the analysis.
 
-```{r}
+```{r, out.width="95%", tidy = TRUE,}
 # T-test for gender differences in CGPA
 t_test_gender <- t.test(All_CGPA ~ Gender, data = gpa_data)
 print(t_test_gender)
@@ -523,7 +579,7 @@ The t-test reveals a significant difference in CGPA based on gender (p < 2.2e-16
 
 
 
-```{r}
+```{r, out.width="95%", tidy = TRUE,}
 gpa_data <- gpa_data %>%
   mutate(FirstEnrolled_Year = as.factor(FirstEnrolled_Year))
 
@@ -535,7 +591,7 @@ summary(anova_year)
 
 The ANOVA test investigates the influence of enrollment year on cumulative GPA. The p-value (0.013) indicates a statistically significant effect of the enrollment year on cumulative GPA. This suggests slight variations in academic performance based on the year students enrolled. However, the mean differences across years seem relatively small, as seen in the exploratory data analysis.
 
-```{r}
+```{r, out.width="95%", tidy = TRUE,}
 # Tukey test to find differences between years
 tukey_posthoc <- TukeyHSD(anova_year)
 print(tukey_posthoc)
@@ -545,18 +601,20 @@ print(tukey_posthoc)
 The Tukey post-hoc test further evaluates pairwise differences between enrollment years. Significant difference is observed between 2016 and earlier years, with the largest positive difference in GPA for the 2016 cohort (+0.15 compared to 2013) and differences between other pairs (e.g., 2014-2013, 2015-2014) are not statistically significant as it could be seen from the graph previously.
 
 
-```{r}
+```{r, out.width="95%", tidy = TRUE,}
 # T-test for Financial Aid (0 = No, 1 = Yes)
-t_test_finaid <- t.test(All_CGPA ~ FincialAid_Received_AtLeast_Once, data = gpa_data)
+t_test_finaid <- t.test(All_CGPA ~ FincialAid_Received_AtLeast_Once, 
+                        data = gpa_data)
 print(t_test_finaid)
 ```
 The Welch Two-Sample T-Test evaluates the relationship between receiving financial aid and cumulative GPA (CGPA). The results reveal a significant difference in CGPA between students who received financial aid and those who did not, with a p-value of less than 2.878e-12. The mean CGPA for students who received financial aid was 3.214, while for those who did not, it was 2.946. This finding indicates that financial aid might contribute positively to academic performance, potentially by alleviating financial pressures or providing access to necessary resources. However, additional research is needed to establish the exact mechanisms driving this relationship.
 
-```{r}
+```{r, out.width="95%", tidy = TRUE,}
 gpa_data_clean <- gpa_data %>%
   filter(!is.na(FirstYear_CGPA), !is.na(College), !is.na(FirstEnrolled_MajorCode))
 
-anova_major_gpa_college <- aov(All_CGPA ~ FirstEnrolled_MajorCode * FirstYear_CGPA * College, data = gpa_data_clean)
+anova_major_gpa_college <- aov(All_CGPA ~ FirstEnrolled_MajorCode * 
+                                 FirstYear_CGPA * College, data = gpa_data_clean)
 summary(anova_major_gpa_college)
 
 ```
@@ -566,7 +624,7 @@ The model evaluates how major codes, first-year CGPA, and colleges collectively 
 ### Switching 
 Switching refers to students transitioning from their initially enrolled major to a different program. This factor may influence cumulative GPA, as initial struggles in the original major could impact academic performance. Although the number of such students is relatively small, their impact on GPA trends is worth exploring.
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, out.width="95%"}
 # Filter for CSE (authentic major: BSCS)
 cse_data <- gpa_data %>%
   mutate(Switched = ifelse(College == "CSE" & FirstEnrolled_MajorCode != "BSCS", 1, 0)) %>%
@@ -584,7 +642,7 @@ chss_data <- gpa_data %>%
 
 ```
 
-```{r}
+```{r, out.width="90%", fig.cap = 'Switched Students by College', echo = FALSE}
 
 combined_data <- bind_rows(cse_data, cbe_data, chss_data)
 
@@ -610,41 +668,47 @@ ggplot(summary_counts, aes(x = College, y = Count, fill = as.factor(Switched))) 
     "#98FB98", "#FF69B4"
   ))
 ```
-```{r}
+```{r, out.width="95%", tidy = TRUE, tidy.opts = list(width.cutoff = 80)}
 # T-test for CSE
-t_test_cse <- t.test(All_CGPA ~ Switched, data = combined_data %>% filter(College == "CSE"))
+t_test_cse <- t.test(All_CGPA ~ Switched, data = combined_data 
+                     %>% filter(College == "CSE"))
 print(t_test_cse)
 ```
 
 For CSE students, a Welch Two Sample t-test revealed that those who switched programs had significantly higher GPAs compared to those who stayed, indicating that switching might have helped alleviate challenges.
 
-```{r}
+```{r, out.width="95%", tidy = TRUE, tidy.opts = list(width.cutoff = 80)}
 # T-test for CBE
-t_test_cbe <- t.test(All_CGPA ~ Switched, data = combined_data %>% filter(College == "CBE"))
+t_test_cbe <- t.test(All_CGPA ~ Switched, data = combined_data 
+                     %>% filter(College == "CBE"))
 print(t_test_cbe)
 ```
 
 For CBE students, the t-test also showed significantly higher GPAs for those who switched, suggesting that transitioning to another program was beneficial for their academic performance.
 
-```{r}
+```{r, out.width="95%", tidy = TRUE, tidy.opts = list(width.cutoff = 80)}
 # T-test for CHSS
-t_test_chss <- t.test(All_CGPA ~ Switched, data = combined_data %>% filter(College == "CHSS"))
+t_test_chss <- t.test(All_CGPA ~ Switched, data = combined_data 
+                      %>% filter(College == "CHSS"))
 print(t_test_chss)
 
 ```
 
 Similarly, CHSS students who switched programs had significantly higher GPAs than those who remained, further supporting the idea that switching can positively impact academic outcomes.
 
-```{r}
-anova_all_star_switched <- Anova(lm(All_CGPA ~ FirstYear_CGPA * Switched * College, data = combined_data))
+```{r, out.width="95%", tidy = TRUE,}
+anova_all_star_switched <- Anova(lm(All_CGPA ~ FirstYear_CGPA * 
+                                      Switched * College, data = combined_data))
 print(anova_all_star_switched)
 
 ```
 
 In the initial ANOVA test, the analysis evaluates the influence of first-year CGPA, switching status, and college on cumulative GPA, including the interactions between these factors. First-year CGPA shows a highly significant effect on cumulative GPA, which is expected since it directly contributes to the calculation of the cumulative GPA. The switching status variable displays marginal significance, suggesting that changing majors might have a potential, albeit weak, influence on cumulative GPA. College remains strongly significant, highlighting notable differences in cumulative GPA based on the college. The interaction between first-year CGPA and college is significant, indicating that the impact of first-year performance on cumulative GPA differs across colleges. However, the interaction between first-year CGPA and switching is not significant, implying that switching majors does not notably modify the relationship between first-year GPA and cumulative GPA.
 
-```{r}
-anova_all_star_switched <- Anova(lm(All_CGPA ~ FirstYear_CGPA * Switched * College * FirstEnrolled_MajorCode, data = combined_data))
+```{r, out.width="95%", tidy = TRUE,}
+anova_all_star_switched <- Anova(lm(All_CGPA ~ FirstYear_CGPA * 
+                                      Switched * College * FirstEnrolled_MajorCode, 
+                                     data = combined_data))
 print(anova_all_star_switched)
 ```
 
@@ -653,8 +717,14 @@ In the extended ANOVA test, the effect of the first enrolled major is included, 
 
 ### Final Model 
 
-```{r}
-lm_all_star_switched <- Anova(lm(All_CGPA ~ FirstYear_CGPA * College * FirstEnrolled_MajorCode * Switched + Gender + School_GPA + FincialAid_Received_AtLeast_Once, data = combined_data))
+```{r, out.width="95%", tidy = TRUE, }
+lm_all_star_switched <- Anova(lm(All_CGPA ~ FirstYear_CGPA * 
+                                   College *
+                                   FirstEnrolled_MajorCode * 
+                                   Switched + Gender + 
+                                   School_GPA + 
+                                   FincialAid_Received_AtLeast_Once, 
+                                   data = combined_data))
 print(lm_all_star_switched)
 
 ```
@@ -677,6 +747,13 @@ Special thank you to AUA's OIRA for providing the data and our instructor, Tadam
 # References
 
 - Data provided by AUA’s Office of Institutional Research and Assessment (OIRA), 2023.
-- 
+
+- Liang, Y.-W. (M.), Jones, D., & Robles-Pina, R. A. (2019). Ethnic and gender stereotypes on college students’ academic performance. Educational Research Quarterly. Retrieved from https://www.aabri.com/manuscripts/182858.pdf
+
+ - Marini, J. P., Westrick, P. A., & Shaw, E. J. (2021). Using SAT® scores to inform academic major-related decisions and planning on campus. College Board Research. Retrieved from https://archive.org/details/ERIC_ED613434
+
+ - Stewart, S., Lim, D. H., & Kim, J. (2018). Factors influencing college persistence for first-time students. Journal of College Student Retention: Research, Theory & Practice. Retrieved from https://files.eric.ed.gov/fulltext/EJ1092649.pdf
+ 
+
 
 
